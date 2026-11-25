@@ -1021,50 +1021,18 @@ SELECT SUM(no_show) AS total_noshows
 FROM appointments;
 
 INSERT INTO appointments (appointment_id, patient_id, clinic_id, booked_on, appt_date, age, gender, distance_km, fee_inr, booking_channel, visit_type, reminder_sent, prior_no_shows, status, lead_days, no_show) VALUES ('A0001', 'P085', 'C08', '2024-12-03', '2025-01-17', '38', 'M', '10.8', '550', 'App', 'Follow-up', 'Yes', '2', 'No-Show', '45', '1');
+-- Error code: Error Code: 1062. Duplicate entry 'A0001' for key 'appointments.PRIMARY'
 
 SELECT * FROM clinics;
 
-SELECT 
-    c.clinic_name, 
-    ROUND(100.0 * SUM(no_show) / COUNT(*), 1) AS no_show_pct,
-    COUNT(app.appointment_id) AS total_appointments
-FROM clinics c
-INNER JOIN appointments app 
-    ON c.clinic_id = app.clinic_id
-GROUP BY c.clinic_name
-HAVING COUNT(app.appointment_id) > 95
-order by no_show_pct desc;
-
+-- Code for 2.2
 
 WITH ClinicMetrics AS (
     SELECT 
-        c.city,
         c.clinic_name,
-        a.no_show,
-        a.appointment_id,
-        -- Window functions calculate clinic-level totals without collapsing individual rows
-        ROUND(100.0 * SUM(a.no_show) OVER (PARTITION BY c.clinic_id) / COUNT(*) OVER (PARTITION BY c.clinic_id), 1) AS no_show_pct,
-        COUNT(a.appointment_id) OVER (PARTITION BY c.clinic_id) AS total_appointments
-    FROM clinics c
-    INNER JOIN appointments a 
-        ON c.clinic_id = a.clinic_id
-)
-SELECT 
-    city,
-    clinic_name,
-    no_show,
-    appointment_id,
-    no_show_pct
-FROM ClinicMetrics
-WHERE total_appointments > 95
-ORDER BY no_show_pct DESC, clinic_name;
-
-WITH ClinicMetrics AS (
-    SELECT 
         c.city,
-        c.clinic_name,
+        COUNT(a.appointment_id) AS appointments,
         SUM(a.no_show) AS total_no_shows,
-        COUNT(a.appointment_id) AS total_appointments,
         ROUND(100.0 * SUM(a.no_show) / COUNT(a.appointment_id), 1) AS no_show_pct
     FROM clinics c
     INNER JOIN appointments a 
@@ -1075,13 +1043,13 @@ WITH ClinicMetrics AS (
         c.clinic_name
 )
 SELECT 
-    city,
     clinic_name,
+    city,
+    appointments,
     total_no_shows,
-    total_appointments,
     no_show_pct
 FROM ClinicMetrics
-WHERE total_appointments > 95
+WHERE appointments > 95
 ORDER BY 
     no_show_pct DESC, 
     clinic_name;
